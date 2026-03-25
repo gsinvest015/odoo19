@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="hr_attendance.MyKioskApp">
+    <MainComponentsContainer/>
+    <div class="myk-bg">
+        <!-- Header -->
+        <header class="myk-header">
+            <img t-att-src="props.companyImageUrl" class="myk-logo" alt="Company Logo"/>
+            <div class="myk-clock">
+                <div class="myk-clock-time" t-esc="state.time"/>
+                <div class="myk-clock-date" t-esc="state.date"/>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="myk-main">
+            <div class="myk-card">
+                <!-- Corner accent decorations via CSS pseudo-elements -->
+
+                <!-- Avatar with animated ring -->
+                <div t-att-class="'myk-avatar-ring ' + (isCheckedIn ? 'is-in' : 'is-out')">
+                    <img
+                        t-att-src="props.employeeData.avatar_url"
+                        class="myk-avatar"
+                        alt="Avatar"/>
+                </div>
+
+                <!-- Employee info -->
+                <div class="myk-employee-info">
+                    <h1 class="myk-name" t-esc="props.employeeData.name"/>
+                    <p t-if="props.employeeData.job_title" class="myk-job" t-esc="props.employeeData.job_title"/>
+                    <div t-att-class="'myk-status-badge ' + (isCheckedIn ? 'is-in' : 'is-out')">
+                        <span class="myk-status-dot"/>
+                        <span t-if="isCheckedIn">ON SITE</span>
+                        <span t-else="">OFF SITE</span>
+                    </div>
+                </div>
+
+                <!-- Punch button -->
+                <button
+                    t-on-click="toggleAttendance"
+                    t-att-disabled="state.loading"
+                    t-att-class="'myk-punch-btn ' + (isCheckedIn ? 'is-checkout' : 'is-checkin') + (state.loading ? ' is-loading' : '') + (state.success ? ' is-success' : '')">
+                    <t t-if="state.loading">
+                        <span class="myk-spinner"/>
+                        <span>Processing…</span>
+                    </t>
+                    <t t-elif="state.success">
+                        <i class="fa fa-check-circle"/>
+                        <span t-if="state.successAction === 'in'">Checked In Successfully</span>
+                        <span t-else="">Checked Out Successfully</span>
+                    </t>
+                    <t t-else="">
+                        <i t-att-class="isCheckedIn ? 'fa fa-sign-out' : 'fa fa-sign-in'"/>
+                        <span t-if="isCheckedIn">CHECK OUT</span>
+                        <span t-else="">CHECK IN</span>
+                    </t>
+                </button>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="myk-footer">
+            <a href="/odoo" class="myk-dashboard-link">
+                <i class="fa fa-th-large"/> Back to Dashboard
+            </a>
+            <span class="myk-powered">
+                Powered by <img src="/web/static/img/logo.png" height="14" alt="Odoo"/>
+            </span>
+        </footer>
+    </div>
+</t>
+
+</templates>

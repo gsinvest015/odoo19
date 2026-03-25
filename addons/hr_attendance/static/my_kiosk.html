@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+<title>My Attendance</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --cyan:#00d4ff;--cyan-glow:rgba(0,212,255,.4);
+  --green:#00ff88;--green-glow:rgba(0,255,136,.35);--green-dim:rgba(0,255,136,.1);
+  --red:#ff4444;--red-glow:rgba(255,68,68,.35);--red-dim:rgba(255,68,68,.1);
+  --orange:#ff9500;
+  --dark:#050b14;--card:rgba(6,16,32,.88);
+}
+html,body{height:100%;overflow:hidden;background:var(--dark);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff}
+
+/* Background effects */
+body::before{content:'';position:fixed;inset:0;
+  background-image:radial-gradient(circle,rgba(0,212,255,.08) 1px,transparent 1px);
+  background-size:36px 36px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;left:0;top:-4px;width:100%;height:4px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  opacity:.18;animation:scan 12s linear infinite;pointer-events:none;z-index:1}
+@keyframes scan{from{top:-4px}to{top:100vh}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes pulse{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.06);opacity:0}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ── Layout ─────────────────────────────────────────────── */
+#root{position:relative;z-index:2;display:flex;flex-direction:column;height:100vh}
+
+header{display:flex;align-items:center;justify-content:space-between;
+  padding:1rem 2rem;border-bottom:1px solid rgba(0,212,255,.1);
+  background:rgba(0,0,0,.25);backdrop-filter:blur(12px);flex-shrink:0}
+.logo{height:32px;object-fit:contain;filter:drop-shadow(0 0 8px var(--cyan-glow))}
+.clock-time{font-family:'Courier New',monospace;font-size:clamp(1.4rem,3vw,2rem);
+  font-weight:700;color:var(--cyan);text-align:right;
+  text-shadow:0 0 16px var(--cyan-glow);letter-spacing:.08em}
+.clock-date{font-size:.65rem;color:rgba(255,255,255,.3);letter-spacing:.18em;
+  text-transform:uppercase;text-align:right;margin-top:.15rem}
+
+.workspace{flex:1;display:grid;grid-template-columns:1fr 380px 1fr;
+  gap:1rem;padding:1rem 1.25rem;min-height:0;overflow:hidden;
+  transition:grid-template-columns .45s ease}
+.workspace.center-only{grid-template-columns:0fr 380px 0fr}
+
+footer{display:flex;align-items:center;justify-content:space-between;
+  padding:.7rem 2rem;border-top:1px solid rgba(0,212,255,.07);
+  background:rgba(0,0,0,.15);flex-shrink:0}
+.dash-link{color:rgba(255,255,255,.22);text-decoration:none;font-size:.75rem;
+  letter-spacing:.06em;transition:color .2s}
+.dash-link:hover{color:var(--cyan)}
+.powered{color:rgba(255,255,255,.12);font-size:.7rem;display:flex;align-items:center;gap:.3rem}
+.powered img{filter:brightness(0) invert(1);opacity:.12}
+
+/* ── Side panels ─────────────────────────────────────────── */
+.side-panel{display:flex;flex-direction:column;gap:.5rem;overflow:hidden;
+  border-radius:1rem;padding:.75rem;min-height:0;position:relative;
+  opacity:1;transition:opacity .35s ease .1s}
+.center-only .side-panel{opacity:0;pointer-events:none}
+.panel-header{display:flex;align-items:center;gap:.5rem;
+  font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;
+  font-weight:700;padding:.2rem .1rem .5rem;flex-shrink:0;border-bottom:1px solid;margin-bottom:.25rem}
+.panel-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.4rem;
+  scrollbar-width:thin}
+.panel-list::-webkit-scrollbar{width:3px}
+.panel-list::-webkit-scrollbar-track{background:transparent}
+
+/* Left panel — not working (crimson) */
+.panel-out{background:rgba(120,10,10,.18);border:1px solid rgba(220,50,50,.2)}
+.panel-out .panel-header{color:#ff6b6b;border-color:rgba(220,50,50,.2)}
+.panel-out .panel-header i{color:#ff4444}
+.panel-out .panel-list::-webkit-scrollbar-thumb{background:rgba(255,68,68,.3)}
+.panel-count-out{background:rgba(255,68,68,.15);color:#ff6b6b;border:1px solid rgba(255,68,68,.3);
+  border-radius:2rem;font-size:.6rem;padding:.1rem .5rem;margin-left:auto}
+
+/* Right panel — working (green) */
+.panel-in{background:rgba(0,100,40,.18);border:1px solid rgba(0,220,90,.2)}
+.panel-in .panel-header{color:#52ff9a;border-color:rgba(0,220,90,.2)}
+.panel-in .panel-header i{color:var(--green)}
+.panel-in .panel-list::-webkit-scrollbar-thumb{background:rgba(0,255,136,.3)}
+.panel-count-in{background:rgba(0,255,136,.12);color:#52ff9a;border:1px solid rgba(0,255,136,.3);
+  border-radius:2rem;font-size:.6rem;padding:.1rem .5rem;margin-left:auto}
+
+/* Employee card (side panels) */
+.emp-card{display:flex;align-items:center;gap:.6rem;padding:.45rem .55rem;
+  border-radius:.5rem;animation:fadeIn .25s ease;transition:background .15s}
+.panel-out .emp-card{background:rgba(180,30,30,.12);border:1px solid rgba(220,50,50,.15)}
+.panel-out .emp-card:hover{background:rgba(180,30,30,.22)}
+.panel-in .emp-card{background:rgba(0,180,70,.1);border:1px solid rgba(0,220,90,.15)}
+.panel-in .emp-card:hover{background:rgba(0,180,70,.2)}
+.emp-card-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;
+  border:1px solid rgba(255,255,255,.1)}
+.panel-out .emp-card-avatar{border-color:rgba(220,50,50,.3)}
+.panel-in .emp-card-avatar{border-color:rgba(0,220,90,.3)}
+.emp-card-name{font-size:.78rem;font-weight:500;color:#dde8f0;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.emp-card-job{font-size:.62rem;color:rgba(255,255,255,.3);letter-spacing:.05em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.panel-empty{text-align:center;padding:2rem .5rem;color:rgba(255,255,255,.2);
+  font-size:.78rem;letter-spacing:.06em}
+
+/* ── Center card ─────────────────────────────────────────── */
+.center{display:flex;align-items:center;justify-content:center}
+.card{background:var(--card);border:1px solid rgba(0,212,255,.18);border-radius:1.5rem;
+  padding:clamp(1.5rem,4vw,2.5rem) clamp(1.25rem,4vw,2rem);width:100%;
+  display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  backdrop-filter:blur(24px);position:relative;
+  box-shadow:0 0 50px rgba(0,212,255,.05),0 20px 60px rgba(0,0,0,.6)}
+.card::before,.card::after{content:'';position:absolute;width:16px;height:16px;
+  border-style:solid;border-color:rgba(0,212,255,.35);border-radius:2px}
+.card::before{top:12px;left:12px;border-width:2px 0 0 2px}
+.card::after{bottom:12px;right:12px;border-width:0 2px 2px 0}
+
+/* Avatar ring */
+.avatar-ring{position:relative;width:112px;height:112px;flex-shrink:0}
+.avatar-ring::before{content:'';position:absolute;inset:-3px;border-radius:50%;
+  animation:spin 4s linear infinite}
+.avatar-ring.is-in::before{
+  background:conic-gradient(from 0deg,transparent 0%,var(--green) 40%,transparent 60%);
+  filter:drop-shadow(0 0 8px var(--green-glow))}
+.avatar-ring.is-out::before{
+  background:conic-gradient(from 0deg,transparent 0%,var(--red) 40%,transparent 60%);
+  filter:drop-shadow(0 0 8px var(--red-glow))}
+.avatar{position:absolute;inset:3px;border-radius:50%;object-fit:cover;
+  background:var(--dark);border:2px solid rgba(0,0,0,.5);z-index:1;
+  width:calc(100% - 6px);height:calc(100% - 6px)}
+
+/* Employee info */
+.emp-info{text-align:center}
+.emp-name{font-size:clamp(1.2rem,3.5vw,1.65rem);font-weight:300;letter-spacing:.04em;margin-bottom:.25rem}
+.emp-job{font-size:.7rem;color:rgba(255,255,255,.3);letter-spacing:.14em;
+  text-transform:uppercase;margin-bottom:.6rem}
+.status-badge{display:inline-flex;align-items:center;gap:.4rem;
+  padding:.25rem .8rem;border-radius:2rem;font-size:.6rem;letter-spacing:.2em;font-weight:700}
+.status-badge.is-in{background:var(--green-dim);border:1px solid rgba(0,255,136,.22);color:var(--green)}
+.status-badge.is-out{background:var(--red-dim);border:1px solid rgba(255,68,68,.22);color:#ff8080}
+.status-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.is-in .status-dot{box-shadow:0 0 5px currentColor;animation:blink 2.2s ease-in-out infinite}
+
+/* Punch buttons row */
+.punch-row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;width:100%}
+.punch-btn{position:relative;padding:.9rem .5rem;border-radius:.75rem;
+  font-size:.8rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;
+  transition:transform .15s,box-shadow .15s,opacity .2s;border:none;outline:none;overflow:hidden}
+.punch-btn::before{content:'';position:absolute;inset:0;border-radius:inherit;
+  background:rgba(255,255,255,.06);opacity:0;transition:opacity .2s}
+.punch-btn:hover:not(:disabled):not(.inactive)::before{opacity:1}
+.punch-btn:active:not(:disabled):not(.inactive){transform:scale(.97)}
+.punch-btn i{font-size:1rem}
+
+/* CHECK OUT — red/left */
+.btn-checkout{
+  background:linear-gradient(135deg,rgba(255,68,68,.15),rgba(180,20,20,.1));
+  border:1px solid rgba(255,68,68,.35);color:var(--red);
+  box-shadow:0 0 20px rgba(255,68,68,.1),0 5px 16px rgba(0,0,0,.4)}
+.btn-checkout.active::after{content:'';position:absolute;inset:-1px;border-radius:inherit;
+  border:2px solid rgba(255,68,68,.4);animation:pulse 2.4s ease-out infinite}
+
+/* CHECK IN — green/right */
+.btn-checkin{
+  background:linear-gradient(135deg,rgba(0,255,136,.12),rgba(0,180,80,.08));
+  border:1px solid rgba(0,255,136,.35);color:var(--green);
+  box-shadow:0 0 20px rgba(0,255,136,.1),0 5px 16px rgba(0,0,0,.4)}
+.btn-checkin.active::after{content:'';position:absolute;inset:-1px;border-radius:inherit;
+  border:2px solid rgba(0,255,136,.4);animation:pulse 2.4s ease-out infinite}
+
+/* Inactive state */
+.punch-btn.inactive{opacity:.28;cursor:default}
+.punch-btn.inactive::after{display:none}
+
+/* Success flash */
+.punch-btn.success{
+  background:linear-gradient(135deg,rgba(0,212,255,.15),rgba(0,80,160,.1)) !important;
+  border-color:rgba(0,212,255,.4) !important;color:var(--cyan) !important;
+  opacity:1 !important}
+.punch-btn.success::after{display:none !important}
+
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.15);
+  border-top-color:currentColor;border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0}
+
+/* Loading overlay */
+#loading{position:fixed;inset:0;z-index:100;display:flex;align-items:center;
+  justify-content:center;background:var(--dark);flex-direction:column;gap:1rem}
+#loading .spinner{width:36px;height:36px;border-width:3px;color:var(--cyan)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spinner"></div></div>
+
+<div id="root" class="hidden">
+  <header>
+    <img id="company-logo" src="/web/binary/company_logo" class="logo" alt=""/>
+    <div>
+      <div class="clock-time" id="clock-time">--:--:--</div>
+      <div class="clock-date" id="clock-date"></div>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <!-- Left: on duty -->
+    <div class="side-panel panel-in">
+      <div class="panel-header">
+        <i class="fa fa-circle-check"></i> ON DUTY
+        <span class="panel-count-in" id="count-in">0</span>
+      </div>
+      <div class="panel-list" id="list-in"></div>
+    </div>
+
+    <!-- Center: personal punch -->
+    <div class="center">
+      <div class="card">
+        <div class="avatar-ring" id="avatar-ring">
+          <img id="avatar" class="avatar" src="" alt=""/>
+        </div>
+        <div class="emp-info">
+          <h1 class="emp-name" id="emp-name"></h1>
+          <p class="emp-job" id="emp-job"></p>
+          <div class="status-badge" id="status-badge">
+            <span class="status-dot"></span>
+            <span id="status-text"></span>
+          </div>
+        </div>
+        <div class="punch-row">
+          <button class="punch-btn btn-checkin" id="btn-checkin" onclick="punch('in')">
+            <i class="fa fa-sign-in"></i><span>CHECK IN</span>
+          </button>
+          <button class="punch-btn btn-checkout" id="btn-checkout" onclick="punch('out')">
+            <i class="fa fa-sign-out"></i><span>CHECK OUT</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: off duty -->
+    <div class="side-panel panel-out">
+      <div class="panel-header">
+        <i class="fa fa-circle-xmark"></i> OFF DUTY
+        <span class="panel-count-out" id="count-out">0</span>
+      </div>
+      <div class="panel-list" id="list-out"></div>
+    </div>
+  </div>
+
+  <footer>
+    <a href="/odoo" class="dash-link"><i class="fa fa-th-large"></i> Dashboard</a>
+    <span class="powered">Powered by <img src="/web/static/img/logo.png" height="13" alt="Odoo"/></span>
+  </footer>
+</div>
+
+<script>
+'use strict';
+let myEmpId = null;
+let myCompanyId = null;
+let busy = false;
+let refreshTimer = null;
+
+// ── Clock ──────────────────────────────────────────────────────
+(function tick() {
+  const n = new Date();
+  document.getElementById('clock-time').textContent =
+    n.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  document.getElementById('clock-date').textContent =
+    n.toLocaleDateString([], {weekday:'long', year:'numeric', month:'long', day:'numeric'}).toUpperCase();
+  setTimeout(tick, 1000);
+})();
+
+// ── RPC ────────────────────────────────────────────────────────
+async function rpc(route, params) {
+  const r = await fetch(route, {
+    method:'POST', credentials:'include',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({jsonrpc:'2.0', method:'call', id:Date.now(), params: params||{}})
+  });
+  const j = await r.json();
+  if (j.error) throw j.error;
+  return j.result;
+}
+
+// ── Attendance state UI ────────────────────────────────────────
+function setCheckedIn(isIn) {
+  document.getElementById('avatar-ring').className = 'avatar-ring ' + (isIn ? 'is-in' : 'is-out');
+  const badge = document.getElementById('status-badge');
+  badge.className = 'status-badge ' + (isIn ? 'is-in' : 'is-out');
+  document.getElementById('status-text').textContent = isIn ? 'ON SITE' : 'OFF SITE';
+
+  const btnOut = document.getElementById('btn-checkout');
+  const btnIn  = document.getElementById('btn-checkin');
+  if (isIn) {
+    btnOut.classList.add('active');    btnOut.classList.remove('inactive');
+    btnIn.classList.add('inactive');   btnIn.classList.remove('active');
+  } else {
+    btnIn.classList.add('active');     btnIn.classList.remove('inactive');
+    btnOut.classList.add('inactive');  btnOut.classList.remove('active');
+  }
+
+  // Side panels only visible when checked in
+  const workspace = document.querySelector('.workspace');
+  if (isIn) {
+    workspace.classList.remove('center-only');
+  } else {
+    workspace.classList.add('center-only');
+  }
+}
+
+// ── Employee panels ────────────────────────────────────────────
+function renderPanel(listId, countId, employees, type) {
+  document.getElementById(countId).textContent = employees.length;
+  const list = document.getElementById(listId);
+  if (!employees.length) {
+    list.innerHTML = '<div class="panel-empty">' +
+      (type === 'in' ? 'No personnel on duty' : 'All staff accounted for') + '</div>';
+    return;
+  }
+  list.innerHTML = employees.map(e => `
+    <div class="emp-card">
+      <img class="emp-card-avatar"
+        src="/web/image/hr.employee/${e.id}/avatar_128"
+        onerror="this.src='/web/static/img/avatar.png'" alt=""/>
+      <div style="min-width:0">
+        <div class="emp-card-name">${e.name}</div>
+        ${(e.job_title || (e.job_id && e.job_id[1])) ?
+          `<div class="emp-card-job">${e.job_title || e.job_id[1]}</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+async function refreshEmployees() {
+  if (!myEmpId || !myCompanyId) return;
+  try {
+    const all = await rpc('/web/dataset/call_kw', {
+      model: 'hr.employee', method: 'search_read',
+      args: [[['company_id','=', myCompanyId], ['id','!=', myEmpId], ['active','=',true]]],
+      kwargs: {fields: ['id','name','attendance_state','job_title','job_id'], limit: 200}
+    });
+    renderPanel('list-in',  'count-in',  all.filter(e => e.attendance_state === 'checked_in'),  'in');
+    renderPanel('list-out', 'count-out', all.filter(e => e.attendance_state === 'checked_out'), 'out');
+  } catch(e) { console.warn('Employee refresh failed', e); }
+}
+
+// ── Init ───────────────────────────────────────────────────────
+async function init() {
+  try {
+    const session = await rpc('/web/session/get_session_info');
+    if (!session || !session.uid) {
+      location.href = '/web/login?redirect=' + encodeURIComponent(location.pathname);
+      return;
+    }
+
+    const [emps, att] = await Promise.all([
+      rpc('/web/dataset/call_kw', {
+        model:'hr.employee', method:'search_read',
+        args: [[['user_id','=', session.uid]]],
+        kwargs: {fields:['id','name','job_title','job_id','attendance_state','company_id'], limit:1}
+      }),
+      rpc('/hr_attendance/attendance_user_data')
+    ]);
+
+    if (!emps || !emps.length) {
+      document.getElementById('loading').innerHTML =
+        '<p style="color:rgba(255,255,255,.4)">No employee record linked to this account.</p>' +
+        '<a href="/odoo" style="color:var(--cyan);margin-top:.5rem">Go to Dashboard</a>';
+      return;
+    }
+
+    const emp = emps[0];
+    myEmpId    = emp.id;
+    myCompanyId = emp.company_id && emp.company_id[0];
+
+    if (session.company_id) {
+      document.getElementById('company-logo').src =
+        '/web/binary/company_logo?company=' + session.company_id[0];
+    }
+    document.getElementById('avatar').src = '/web/image/hr.employee/' + emp.id + '/avatar_256';
+    document.getElementById('emp-name').textContent = emp.name;
+    const job = emp.job_title || (emp.job_id && emp.job_id[1]) || '';
+    const jobEl = document.getElementById('emp-job');
+    if (job) jobEl.textContent = job; else jobEl.style.display = 'none';
+
+    const state = (att && att.attendance_state) || emp.attendance_state;
+    setCheckedIn(state === 'checked_in');
+
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('root').classList.remove('hidden');
+
+    await refreshEmployees();
+    // Refresh employee list every 30 seconds
+    refreshTimer = setInterval(refreshEmployees, 30000);
+
+  } catch(e) {
+    console.error(e);
+    if (e.code === 100 || String(e.message || '').includes('Session')) {
+      location.href = '/web/login?redirect=' + encodeURIComponent(location.pathname);
+    } else {
+      document.getElementById('loading').innerHTML =
+        '<p style="color:rgba(255,255,255,.4)">' + (e.data && e.data.message || e.message || 'Error') + '</p>' +
+        '<a href="/web/login" style="color:var(--cyan)">Login</a>';
+    }
+  }
+}
+
+// ── Punch ──────────────────────────────────────────────────────
+async function punch(direction) {
+  const isIn = document.getElementById('avatar-ring').classList.contains('is-in');
+  // Guard: don't allow redundant action
+  if (direction === 'in'  &&  isIn) return;
+  if (direction === 'out' && !isIn) return;
+  if (busy) return;
+  busy = true;
+
+  const btnId = direction === 'in' ? 'btn-checkin' : 'btn-checkout';
+  const btn = document.getElementById(btnId);
+  const origHTML = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+
+  try {
+    let geo = {};
+    try {
+      const pos = await new Promise((res,rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, {enableHighAccuracy:true, timeout:3000}));
+      geo = {latitude: pos.coords.latitude, longitude: pos.coords.longitude};
+    } catch(e) {}
+
+    const result = await rpc('/hr_attendance/systray_check_in_out', geo);
+    if (result && result.attendance_state !== undefined) {
+      setCheckedIn(result.attendance_state === 'checked_in');
+      // Flash success on the button
+      btn.innerHTML = '<i class="fa fa-check"></i><span>' + (direction==='in' ? 'Checked In' : 'Checked Out') + '</span>';
+      btn.classList.add('success');
+      setTimeout(() => {
+        btn.classList.remove('success');
+        btn.innerHTML = origHTML;
+        btn.disabled = false;
+      }, 2500);
+      await refreshEmployees();
+    }
+  } catch(e) {
+    console.error(e);
+    btn.innerHTML = origHTML;
+    btn.disabled = false;
+  } finally {
+    busy = false;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
