@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>薪資彙總表</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ac:#0d9488;--ac-l:rgba(13,148,136,.1);--ac-d:#0f766e;--ac-t:#2dd4bf;
+  --ok:#16a34a;--ok-l:rgba(22,163,74,.1);
+  --err:#dc2626;--err-l:rgba(220,38,38,.1);
+  --warn:#ca8a04;--warn-l:rgba(202,138,4,.1);
+  --info:#2563eb;--info-l:rgba(37,99,235,.1);
+  --leave:#7c3aed;--leave-l:rgba(124,58,237,.1);
+  --sb:#0f172a;--sb2:#1e293b;
+  --bg:#f1f5f9;--srf:#fff;--srf2:#f8fafc;
+  --bd:#e2e8f0;--bd2:#cbd5e1;
+  --tx:#0f172a;--tx2:#475569;--tx3:#94a3b8;
+  --r:10px;--r-s:6px;--r-l:16px;
+  --sh:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --sh-m:0 4px 16px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.05);
+  --sh-l:0 20px 48px rgba(0,0,0,.12);
+}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--bg);color:var(--tx);font-size:15px;line-height:1.6;overflow:hidden}
+button,input,select{font-family:inherit}
+button{cursor:pointer}
+
+#app{display:flex;height:100vh;overflow:hidden}
+
+/* Sidebar */
+.sb{width:248px;flex-shrink:0;background:var(--sb);display:flex;flex-direction:column;
+  border-right:1px solid rgba(255,255,255,.04)}
+.sb-brand{display:flex;align-items:center;gap:.6rem;padding:1.3rem 1.1rem;
+  border-bottom:1px solid rgba(255,255,255,.06)}
+.sb-brand-ic{width:32px;height:32px;border-radius:var(--r-s);background:linear-gradient(135deg,var(--ac),var(--ac-d));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:.9rem;flex-shrink:0}
+.sb-brand-n{font-size:.85rem;font-weight:700;color:#fff;line-height:1.2}
+.sb-brand-s{font-size:.65rem;color:rgba(255,255,255,.25);letter-spacing:.07em}
+.sb-nav{padding:.5rem .55rem;flex:1;overflow-y:auto}
+.sb-grp{font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(255,255,255,.18);padding:.9rem .7rem .3rem}
+.sb-i{display:flex;align-items:center;gap:.65rem;padding:.62rem .75rem;border-radius:var(--r-s);
+  color:rgba(255,255,255,.52);font-size:.85rem;font-weight:500;transition:all .15s;
+  margin-bottom:.12rem;border:1px solid transparent;cursor:pointer;user-select:none;text-decoration:none}
+.sb-i:hover{background:rgba(255,255,255,.06);color:#fff}
+.sb-i.on{background:rgba(13,148,136,.18);color:var(--ac-t);border-color:rgba(13,148,136,.22)}
+.sb-i i{width:14px;text-align:center;font-size:.82rem;flex-shrink:0}
+.sb-foot{border-top:1px solid rgba(255,255,255,.06);padding:.9rem .75rem}
+.sb-clk{font-family:'Courier New',monospace;font-size:1.1rem;font-weight:700;
+  color:var(--ac-t);text-align:center;letter-spacing:.05em}
+.sb-dt{font-size:.58rem;color:rgba(255,255,255,.2);text-align:center;
+  letter-spacing:.08em;text-transform:uppercase;margin:.12rem 0 .55rem}
+.sb-me{display:flex;align-items:center;gap:.45rem;padding:.38rem .42rem;
+  border-radius:var(--r-s);background:rgba(255,255,255,.04)}
+.sb-av{width:27px;height:27px;border-radius:50%;object-fit:cover;
+  border:1.5px solid rgba(255,255,255,.12);flex-shrink:0}
+.sb-me-n{font-size:.7rem;color:rgba(255,255,255,.58);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-me-r{font-size:.58rem;color:rgba(255,255,255,.22)}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:.75rem;padding:1rem 2rem;
+  background:var(--srf);border-bottom:1px solid var(--bd);flex-shrink:0;box-shadow:var(--sh)}
+.tb-title{font-size:1rem;font-weight:700;color:var(--tx)}
+.sp{flex:1}
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.52rem 1rem;
+  border-radius:var(--r-s);font-size:.82rem;font-weight:600;border:none;transition:all .15s;flex-shrink:0}
+.btn-pr{background:var(--ac);color:#fff}
+.btn-pr:hover{background:var(--ac-d);box-shadow:0 2px 8px rgba(13,148,136,.3)}
+.btn-gh{background:transparent;color:var(--tx2);border:1px solid var(--bd)}
+.btn-gh:hover{background:var(--srf2)}
+.btn-sm{padding:.36rem .7rem;font-size:.76rem}
+
+/* Month nav */
+.month-nav{display:flex;align-items:center;gap:.5rem}
+.month-lbl{font-size:.9rem;font-weight:700;color:var(--tx);min-width:90px;text-align:center}
+.mnb{width:30px;height:30px;border-radius:var(--r-s);border:1px solid var(--bd);
+  background:transparent;color:var(--tx2);display:flex;align-items:center;
+  justify-content:center;font-size:.75rem;transition:all .15s}
+.mnb:hover{border-color:var(--ac);color:var(--ac);background:var(--ac-l)}
+
+/* Filter select */
+.fsl{padding:.36rem .65rem;border:1px solid var(--bd);border-radius:var(--r-s);
+  font-size:.78rem;color:var(--tx);background:var(--srf);outline:none}
+.fsl:focus{border-color:var(--ac)}
+
+/* Content area — more breathing room */
+.content{flex:1;overflow-y:auto;padding:1.8rem 2.2rem;display:flex;flex-direction:column;gap:1.8rem}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
+
+/* KPI row */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1.2rem}
+.kpi{background:var(--srf);border:1px solid var(--bd);border-radius:var(--r);
+  padding:1.5rem 1.6rem;box-shadow:var(--sh);position:relative;overflow:hidden;transition:box-shadow .2s}
+.kpi:hover{box-shadow:var(--sh-m)}
+.kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
+.kpi.ok::before{background:var(--ok)}
+.kpi.er::before{background:var(--err)}
+.kpi.ac::before{background:var(--ac)}
+.kpi.wn::before{background:var(--warn)}
+.kpi-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.65rem}
+.kpi-lbl{font-size:.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3)}
+.kpi-ic{width:40px;height:40px;border-radius:var(--r-s);display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.kpi.ok .kpi-ic{background:var(--ok-l);color:var(--ok)}
+.kpi.er .kpi-ic{background:var(--err-l);color:var(--err)}
+.kpi.ac .kpi-ic{background:var(--ac-l);color:var(--ac)}
+.kpi.wn .kpi-ic{background:var(--warn-l);color:var(--warn)}
+.kpi-v{font-size:2.2rem;font-weight:800;line-height:1;letter-spacing:-.03em}
+.kpi-d{font-size:.74rem;color:var(--tx3);margin-top:.35rem}
+
+/* Table card */
+.tcard{background:var(--srf);border:1px solid var(--bd);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+.tcard-hd{display:flex;align-items:center;gap:.5rem;padding:1rem 1.4rem;
+  border-bottom:1px solid var(--bd);background:var(--srf2)}
+.tcard-t{font-size:.82rem;font-weight:700;color:var(--tx2)}
+
+/* Table */
+.twrap{overflow-x:auto}
+.twrap::-webkit-scrollbar{height:4px}
+.twrap::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
+table.mt{width:100%;border-collapse:collapse}
+.mt thead th{background:var(--srf2);padding:.75rem 1rem;text-align:left;font-size:.67rem;
+  font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--tx3);
+  border-bottom:1px solid var(--bd);white-space:nowrap;position:sticky;top:0;z-index:2;user-select:none}
+.mt thead th.srt{cursor:pointer}
+.mt thead th.srt:hover{color:var(--ac);background:var(--ac-l)}
+.mt thead th.srtd{color:var(--ac)}
+.si2{font-size:.5rem;margin-left:.2rem;opacity:.3}
+.mt th.srtd .si2{opacity:1}
+.mt thead th.num{text-align:right}
+.mt tbody tr{border-bottom:1px solid var(--bd);transition:background .1s}
+.mt tbody tr:last-child{border-bottom:none}
+.mt tbody tr:hover{background:var(--srf2)}
+.mt td{padding:.82rem 1rem;font-size:.84rem;color:var(--tx);vertical-align:middle}
+.mt td.num{text-align:right;font-family:'Courier New',monospace;font-size:.78rem;white-space:nowrap}
+.mt td.emp-name{font-weight:600;white-space:nowrap}
+.mt td.dept-name{color:var(--tx2);font-size:.8rem}
+.mt td.amt{font-weight:700}
+.mt td.capped{color:var(--err)}
+
+/* Footer / total row */
+.mt tfoot td{padding:.85rem 1rem;font-size:.8rem;font-weight:800;color:var(--tx);
+  background:var(--srf2);border-top:2px solid var(--bd2);white-space:nowrap}
+.mt tfoot td.num{text-align:right;font-family:'Courier New',monospace}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;padding:.16rem .5rem;
+  border-radius:2rem;font-size:.63rem;font-weight:700;letter-spacing:.05em;white-space:nowrap}
+.b-cap{background:var(--err-l);color:var(--err);border:1px solid rgba(220,38,38,.2)}
+
+/* Toast */
+#tw{position:fixed;bottom:1.4rem;right:1.4rem;z-index:500;
+  display:flex;flex-direction:column;gap:.3rem;pointer-events:none}
+.toast{padding:.52rem .85rem;border-radius:var(--r-s);font-size:.76rem;font-weight:500;
+  box-shadow:var(--sh-m);display:flex;align-items:center;gap:.4rem;animation:tin .2s ease;pointer-events:all}
+.t-ok{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+.t-er{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.t-in{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+@keyframes tin{from{transform:translateX(100%);opacity:0}to{transform:none;opacity:1}}
+
+/* Spin & loading */
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--bd2);
+  border-top-color:var(--ac);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#init{position:fixed;inset:0;background:var(--sb);z-index:999;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.65rem}
+#init .spin{border-color:rgba(255,255,255,.1);border-top-color:var(--ac-t);width:24px;height:24px;border-width:3px}
+#init p{color:rgba(255,255,255,.28);font-size:.76rem}
+.hid{display:none!important}
+
+/* Empty state */
+.empty-row td{text-align:center;padding:3rem;color:var(--tx3);font-size:.82rem}
+.empty-row td i{display:block;font-size:2rem;margin-bottom:.6rem;opacity:.18}
+
+/* Warning banner */
+.warn-banner{display:flex;align-items:center;gap:.6rem;padding:1rem 1.4rem;
+  background:var(--warn-l);border:1px solid rgba(202,138,4,.3);border-radius:var(--r);
+  color:var(--warn);font-size:.82rem;font-weight:600}
+.warn-banner i{font-size:1rem}
+
+/* Print */
+@media print{
+  @page{size:A4 landscape;margin:8mm}
+  body{overflow:visible;font-size:11px;background:#fff}
+  #app{display:block;height:auto;overflow:visible}
+  .sb,.topbar,.btn,#tw,#init,.warn-banner{display:none!important}
+  .main{overflow:visible}
+  .content{overflow:visible;padding:.5rem;gap:.8rem}
+  .kpi-row{grid-template-columns:repeat(4,1fr);gap:.5rem}
+  .kpi{padding:.7rem .8rem;box-shadow:none;border:1px solid #ccc;page-break-inside:avoid}
+  .kpi-v{font-size:1.2rem}
+  .tcard{box-shadow:none;border:1px solid #ccc}
+  .tcard-hd{background:#f5f5f5;padding:.5rem .8rem}
+  .mt thead th{background:#f5f5f5;padding:.4rem .6rem;font-size:.6rem}
+  .mt td{padding:.4rem .6rem;font-size:.7rem}
+  .mt tfoot td{padding:.4rem .6rem;font-size:.7rem}
+  .twrap{overflow:visible}
+}
+
+/* Responsive */
+@media(max-width:1200px){
+  .kpi-row{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:768px){
+  .sb{display:none}
+  .topbar{padding:.7rem 1rem;flex-wrap:wrap}
+  .content{padding:1rem}
+  .kpi-row{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div id="init"><div class="spin"></div><p>載入中…</p></div>
+<div id="tw"></div>
+
+<div id="app">
+  <!-- Sidebar -->
+  <aside class="sb">
+    <div class="sb-brand">
+      <div class="sb-brand-ic"><i class="fa fa-file-invoice-dollar"></i></div>
+      <div>
+        <div class="sb-brand-n">薪資彙總</div>
+        <div class="sb-brand-s">PAYROLL SUMMARY</div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-grp">功能選單</div>
+      <a class="sb-i on" href="#"><i class="fa fa-calculator"></i> 薪資彙總表</a>
+      <a class="sb-i" href="attendance_mgmt.html"><i class="fa fa-clock"></i> 考勤管理</a>
+    </nav>
+    <div class="sb-foot">
+      <div class="sb-clk" id="clock">--:--:--</div>
+      <div class="sb-dt" id="clock-date">----/--/--</div>
+      <div class="sb-me">
+        <img class="sb-av" id="sb-avatar" src="/web/image/res.users/2/avatar_128" alt=""/>
+        <div>
+          <div class="sb-me-n" id="sb-name">載入中…</div>
+          <div class="sb-me-r" id="sb-company">—</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="tb-title"><i class="fa fa-file-invoice-dollar" style="color:var(--ac);margin-right:.3rem"></i>薪資彙總表</div>
+      <div class="sp"></div>
+      <div class="month-nav">
+        <button class="mnb" onclick="chgMonth(-1)"><i class="fa fa-chevron-left"></i></button>
+        <span class="month-lbl" id="month-lbl">2026-03</span>
+        <button class="mnb" onclick="chgMonth(1)"><i class="fa fa-chevron-right"></i></button>
+      </div>
+      <select class="fsl" id="dept-filter" onchange="applyFilter()">
+        <option value="">全部部門</option>
+      </select>
+      <button class="btn btn-gh btn-sm" onclick="doExportCSV()"><i class="fa fa-file-csv"></i> 匯出CSV</button>
+      <button class="btn btn-gh btn-sm" onclick="doPrint()"><i class="fa fa-print"></i> 列印</button>
+      <a class="btn btn-pr btn-sm" href="/odoo/attendance"><i class="fa fa-arrow-left"></i> 返回Odoo</a>
+    </header>
+
+    <!-- Content -->
+    <div class="content">
+      <!-- Warning banner (hidden by default) -->
+      <div class="warn-banner hid" id="hourly-warn">
+        <i class="fa fa-triangle-exclamation"></i>
+        <span>偵測到 hr_hourly_cost 模組未安裝或部分員工未設定時薪（hourly_cost），薪資計算可能不完整。</span>
+      </div>
+
+      <!-- KPI -->
+      <div class="kpi-row">
+        <div class="kpi ac">
+          <div class="kpi-hd">
+            <div class="kpi-lbl">員工人數</div>
+            <div class="kpi-ic"><i class="fa fa-users"></i></div>
+          </div>
+          <div class="kpi-v" id="kpi-emp">0</div>
+          <div class="kpi-d">本月在職員工</div>
+        </div>
+        <div class="kpi ok">
+          <div class="kpi-hd">
+            <div class="kpi-lbl">總正常工時</div>
+            <div class="kpi-ic"><i class="fa fa-clock"></i></div>
+          </div>
+          <div class="kpi-v" id="kpi-hours">0h</div>
+          <div class="kpi-d">正常上班時數合計</div>
+        </div>
+        <div class="kpi wn">
+          <div class="kpi-hd">
+            <div class="kpi-lbl">總加班時數</div>
+            <div class="kpi-ic"><i class="fa fa-hourglass-half"></i></div>
+          </div>
+          <div class="kpi-v" id="kpi-ot">0h</div>
+          <div class="kpi-d">平日 + 休息日加班</div>
+        </div>
+        <div class="kpi er">
+          <div class="kpi-hd">
+            <div class="kpi-lbl">總應發薪資</div>
+            <div class="kpi-ic"><i class="fa fa-dollar-sign"></i></div>
+          </div>
+          <div class="kpi-v" id="kpi-pay">$0</div>
+          <div class="kpi-d">本月應發金額合計</div>
+        </div>
+      </div>
+
+      <!-- Main table -->
+      <div class="tcard">
+        <div class="tcard-hd">
+          <i class="fa fa-table" style="color:var(--ac)"></i>
+          <span class="tcard-t">薪資明細</span>
+          <span class="sp"></span>
+          <span class="tcard-t" id="tbl-count" style="font-weight:400;color:var(--tx3);font-size:.72rem"></span>
+        </div>
+        <div class="twrap">
+          <table class="mt" id="payroll-table">
+            <thead>
+              <tr>
+                <th class="srt" data-f="name" onclick="doSort('name')">員工 <span class="si2">▲</span></th>
+                <th class="srt" data-f="dept" onclick="doSort('dept')">部門 <span class="si2">▲</span></th>
+                <th class="srt num" data-f="rate" onclick="doSort('rate')">時薪 <span class="si2">▲</span></th>
+                <th class="srt num" data-f="normalH" onclick="doSort('normalH')">正常工時 <span class="si2">▲</span></th>
+                <th class="srt num" data-f="weekdayOT" onclick="doSort('weekdayOT')">平日加班(h) <span class="si2">▲</span></th>
+                <th class="srt num" data-f="restdayOT" onclick="doSort('restdayOT')">休息日加班(h) <span class="si2">▲</span></th>
+                <th class="srt num" data-f="otPay" onclick="doSort('otPay')">加班費 <span class="si2">▲</span></th>
+                <th class="srt num" data-f="leaveDays" onclick="doSort('leaveDays')">請假天數 <span class="si2">▲</span></th>
+                <th class="srt num" data-f="leaveDeduct" onclick="doSort('leaveDeduct')">請假扣款 <span class="si2">▲</span></th>
+                <th class="srt num" data-f="compOffset" onclick="doSort('compOffset')">調休抵銷 <span class="si2">▲</span></th>
+                <th class="srt num" data-f="totalPay" onclick="doSort('totalPay')">應發薪資 <span class="si2">▲</span></th>
+              </tr>
+            </thead>
+            <tbody id="payroll-body">
+              <tr class="empty-row"><td colspan="11"><i class="fa fa-inbox"></i>載入中…</td></tr>
+            </tbody>
+            <tfoot id="payroll-foot" class="hid">
+              <tr>
+                <td colspan="2" style="font-weight:800">合計</td>
+                <td class="num">—</td>
+                <td class="num" id="ft-normalH"></td>
+                <td class="num" id="ft-weekdayOT"></td>
+                <td class="num" id="ft-restdayOT"></td>
+                <td class="num" id="ft-otPay"></td>
+                <td class="num" id="ft-leaveDays"></td>
+                <td class="num" id="ft-leaveDeduct"></td>
+                <td class="num" id="ft-compOffset"></td>
+                <td class="num" id="ft-totalPay"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== STATE ===== */
+const STATE = {
+  uid: null, coName: '',
+  month: new Date().toISOString().slice(0,7),
+  employees: new Map(),
+  departments: [],
+  attendance: new Map(),
+  leaves: new Map(),
+  payroll: [],
+  filter: { dept: '' },
+  sort: { field: 'name', dir: 'asc' },
+  hourlyWarn: false
+};
+
+/* ===== RPC ===== */
+async function rpc(route,params){
+  const r=await fetch(route,{method:'POST',credentials:'include',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({jsonrpc:'2.0',method:'call',id:Date.now(),params:params||{}})});
+  const j=await r.json();
+  if(j.error)throw j.error;
+  return j.result;
+}
+async function orm(m,fn,a,k){return rpc('/web/dataset/call_kw',{model:m,method:fn,args:a||[],kwargs:k||{}});}
+
+/* ===== PURE CALC FUNCTIONS ===== */
+
+// 平日加班費 (勞基法第24條)
+function calcWeekdayOT(hours, rate) {
+  if (hours <= 0) return 0;
+  let pay = 0;
+  const h1 = Math.min(hours, 2);       // 前 2 小時
+  pay += h1 * rate * (4/3);             // ×1.34
+  const h2 = Math.min(Math.max(hours - 2, 0), 2); // 再 2 小時
+  pay += h2 * rate * (5/3);             // ×1.67
+  return pay;
+}
+
+// 休息日加班費
+function calcRestdayOT(hours, rate) {
+  if (hours <= 0) return 0;
+  let pay = 0;
+  const h1 = Math.min(hours, 2);
+  pay += h1 * rate * (4/3);             // 前 2h ×1.34
+  const h2 = Math.min(Math.max(hours - 2, 0), 6);
+  pay += h2 * rate * (5/3);             // 2-8h ×1.67
+  const h3 = Math.max(hours - 8, 0);
+  pay += h3 * rate * (8/3);             // >8h ×2.67
+  return pay;
+}
+
+// 請假扣薪
+function calcLeaveDeduction(days, rate) {
+  return days * rate * 8;               // 日薪 = 時薪 × 8
+}
+
+// 調休抵銷
+function calcCompOffset(otHours, leaveDays, rate) {
+  const otDays = otHours / 8;
+  const offsetDays = Math.min(otDays, leaveDays);
+  const offsetAmount = offsetDays * rate * 8;
+  const netDeduction = Math.max(0, (leaveDays - offsetDays) * rate * 8);
+  return { offsetDays, offsetAmount, netDeduction };
+}
+
+// 月加班上限 46h
+function clampOT(weekdayH, restdayH) {
+  const total = weekdayH + restdayH;
+  if (total <= 46) return { weekdayH, restdayH, capped: false };
+  const ratio = 46 / total;
+  return { weekdayH: weekdayH * ratio, restdayH: restdayH * ratio, capped: true };
+}
+
+// 金額格式化
+function famt(n) {
+  return '$' + Math.round(n).toLocaleString('zh-TW');
+}
+
+// 小時格式化
+function fhrs(n) {
+  return n.toFixed(1);
+}
+
+/* ===== INIT ===== */
+async function init() {
+  try {
+    const sess = await rpc('/web/session/get_session_info');
+    if (!sess || !sess.uid) {
+      window.location.href = '/web/login?redirect=' + encodeURIComponent(location.pathname);
+      return;
+    }
+    STATE.uid = sess.uid;
+    STATE.coName = sess.company_name || '';
+    document.getElementById('sb-name').textContent = sess.name || sess.username || '使用者';
+    document.getElementById('sb-company').textContent = STATE.coName;
+    document.getElementById('sb-avatar').src = '/web/image/res.users/' + sess.uid + '/avatar_128';
+    updateMonthLabel();
+    await loadAll();
+  } catch(e) {
+    console.error('Init error', e);
+    toast('初始化失敗：' + (e.message || JSON.stringify(e)), 'er');
+  } finally {
+    document.getElementById('init').classList.add('hid');
+  }
+}
+
+/* ===== DATA LOADING ===== */
+async function loadAll() {
+  try {
+    const [emps, depts] = await Promise.all([
+      loadEmployees(),
+      loadDepartments()
+    ]);
+    // Now load attendance and leaves (need month range)
+    const [att, lvs] = await Promise.all([
+      loadAttendance(),
+      loadLeaves()
+    ]);
+    computeAll();
+    render();
+  } catch(e) {
+    console.error('loadAll error', e);
+    toast('資料載入失敗：' + (e.message || JSON.stringify(e)), 'er');
+    document.getElementById('payroll-body').innerHTML =
+      '<tr class="empty-row"><td colspan="11"><i class="fa fa-exclamation-triangle"></i>載入失敗，請重新整理</td></tr>';
+  }
+}
+
+async function loadEmployees() {
+  STATE.employees.clear();
+  STATE.hourlyWarn = false;
+  let fields = ['name', 'department_id'];
+  let hasHourlyCost = true;
+  try {
+    const result = await orm('hr.employee', 'search_read',
+      [[['active','=',true]]],
+      { fields: ['name', 'department_id', 'hourly_cost'], limit: false }
+    );
+    for (const emp of result) {
+      if (!emp.hourly_cost && emp.hourly_cost !== 0) {
+        STATE.hourlyWarn = true;
+      }
+      STATE.employees.set(emp.id, {
+        id: emp.id,
+        name: emp.name,
+        deptId: emp.department_id ? emp.department_id[0] : null,
+        deptName: emp.department_id ? emp.department_id[1] : '未指派',
+        rate: emp.hourly_cost || 0
+      });
+    }
+  } catch(e) {
+    // Fallback: hourly_cost field may not exist
+    console.warn('hourly_cost not available, trying without it', e);
+    STATE.hourlyWarn = true;
+    const result = await orm('hr.employee', 'search_read',
+      [[['active','=',true]]],
+      { fields: ['name', 'department_id'], limit: false }
+    );
+    for (const emp of result) {
+      STATE.employees.set(emp.id, {
+        id: emp.id,
+        name: emp.name,
+        deptId: emp.department_id ? emp.department_id[0] : null,
+        deptName: emp.department_id ? emp.department_id[1] : '未指派',
+        rate: 0
+      });
+    }
+  }
+  // Show or hide warning
+  document.getElementById('hourly-warn').classList.toggle('hid', !STATE.hourlyWarn);
+}
+
+async function loadDepartments() {
+  const result = await orm('hr.department', 'search_read', [[]], { fields: ['id', 'name'], limit: false });
+  STATE.departments = result;
+  const sel = document.getElementById('dept-filter');
+  // Preserve current value
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">全部部門</option>';
+  for (const d of result) {
+    const opt = document.createElement('option');
+    opt.value = d.id;
+    opt.textContent = d.name;
+    sel.appendChild(opt);
+  }
+  sel.value = cur || '';
+}
+
+function getMonthRange() {
+  const [y, m] = STATE.month.split('-').map(Number);
+  const start = new Date(y, m - 1, 1);
+  const end = new Date(y, m, 1);
+  const fmt = d => d.toISOString().slice(0, 10) + ' 00:00:00';
+  return { start: fmt(start), end: fmt(end), startDate: start, endDate: end };
+}
+
+async function loadAttendance() {
+  STATE.attendance.clear();
+  const { start, end } = getMonthRange();
+  const result = await orm('hr.attendance', 'search_read',
+    [[['check_in','>=',start],['check_in','<',end]]],
+    { fields: ['employee_id','check_in','check_out','worked_hours'], limit: false }
+  );
+  for (const rec of result) {
+    const eid = rec.employee_id[0];
+    if (!STATE.attendance.has(eid)) STATE.attendance.set(eid, []);
+    STATE.attendance.get(eid).push(rec);
+  }
+}
+
+async function loadLeaves() {
+  STATE.leaves.clear();
+  const { start, end } = getMonthRange();
+  try {
+    const result = await orm('hr.leave', 'search_read',
+      [[['state','=','validate'],['date_from','<',end],['date_to','>=',start]]],
+      { fields: ['employee_id','number_of_days','holiday_status_id','date_from','date_to'], limit: false }
+    );
+    for (const rec of result) {
+      const eid = rec.employee_id[0];
+      if (!STATE.leaves.has(eid)) STATE.leaves.set(eid, []);
+      STATE.leaves.get(eid).push(rec);
+    }
+  } catch(e) {
+    console.warn('Failed to load leaves', e);
+  }
+}
+
+/* ===== COMPUTE ===== */
+function computeAll() {
+  STATE.payroll = [];
+  for (const [eid, emp] of STATE.employees) {
+    const records = STATE.attendance.get(eid) || [];
+    const leaveRecords = STATE.leaves.get(eid) || [];
+    const rate = emp.rate;
+
+    // Classify hours
+    let totalWorked = 0;
+    let weekdayOTRaw = 0;
+    let restdayOTRaw = 0;
+    let normalH = 0;
+
+    for (const rec of records) {
+      const wh = rec.worked_hours || 0;
+      totalWorked += wh;
+
+      const day = new Date(rec.check_in).getDay(); // 0=Sun, 6=Sat
+      if (day === 0 || day === 6) {
+        // Weekend: all hours count as OT
+        if (day === 6) {
+          restdayOTRaw += wh; // Saturday = rest day
+        } else {
+          restdayOTRaw += wh; // Sunday = holiday, treated as rest day OT for simplicity
+        }
+      } else {
+        // Weekday: first 8h normal, rest is OT
+        if (wh > 8) {
+          normalH += 8;
+          weekdayOTRaw += wh - 8;
+        } else {
+          normalH += wh;
+        }
+      }
+    }
+
+    // Clamp OT to 46h
+    const ot = clampOT(weekdayOTRaw, restdayOTRaw);
+
+    // Leave days
+    let leaveDays = 0;
+    for (const lv of leaveRecords) {
+      leaveDays += lv.number_of_days || 0;
+    }
+
+    // Calculations
+    const weekdayOTPay = calcWeekdayOT(ot.weekdayH, rate);
+    const restdayOTPay = calcRestdayOT(ot.restdayH, rate);
+    const otPay = weekdayOTPay + restdayOTPay;
+
+    const totalOTHours = ot.weekdayH + ot.restdayH;
+    const comp = calcCompOffset(totalOTHours, leaveDays, rate);
+
+    const normalPay = normalH * rate;
+    const totalPay = normalPay + otPay - comp.netDeduction;
+
+    STATE.payroll.push({
+      id: eid,
+      name: emp.name,
+      dept: emp.deptName,
+      deptId: emp.deptId,
+      rate: rate,
+      normalH: Math.round(normalH * 10) / 10,
+      weekdayOT: Math.round(ot.weekdayH * 10) / 10,
+      restdayOT: Math.round(ot.restdayH * 10) / 10,
+      otPay: Math.round(otPay),
+      leaveDays: Math.round(leaveDays * 10) / 10,
+      leaveDeduct: Math.round(calcLeaveDeduction(leaveDays, rate)),
+      compOffset: Math.round(comp.offsetAmount),
+      totalPay: Math.round(totalPay),
+      capped: ot.capped
+    });
+  }
+}
+
+/* ===== RENDER ===== */
+function render() {
+  // Filter
+  let data = STATE.payroll;
+  if (STATE.filter.dept) {
+    const dId = parseInt(STATE.filter.dept);
+    data = data.filter(r => r.deptId === dId);
+  }
+
+  // Sort
+  const { field, dir } = STATE.sort;
+  const mul = dir === 'asc' ? 1 : -1;
+  data.sort((a, b) => {
+    let va = a[field], vb = b[field];
+    if (typeof va === 'string') {
+      return mul * va.localeCompare(vb, 'zh-TW');
+    }
+    return mul * ((va || 0) - (vb || 0));
+  });
+
+  // Update sort indicators
+  document.querySelectorAll('.mt thead th.srt').forEach(th => {
+    const f = th.dataset.f;
+    th.classList.toggle('srtd', f === field);
+    const arrow = th.querySelector('.si2');
+    if (f === field) {
+      arrow.textContent = dir === 'asc' ? '▲' : '▼';
+    } else {
+      arrow.textContent = '▲';
+    }
+  });
+
+  // KPI
+  const totals = {
+    emp: data.length,
+    normalH: 0, otH: 0, totalPay: 0
+  };
+  for (const r of data) {
+    totals.normalH += r.normalH;
+    totals.otH += r.weekdayOT + r.restdayOT;
+    totals.totalPay += r.totalPay;
+  }
+  document.getElementById('kpi-emp').textContent = totals.emp;
+  document.getElementById('kpi-hours').textContent = fhrs(totals.normalH) + 'h';
+  document.getElementById('kpi-ot').textContent = fhrs(totals.otH) + 'h';
+  document.getElementById('kpi-pay').textContent = famt(totals.totalPay);
+
+  // Table body
+  const tbody = document.getElementById('payroll-body');
+  if (data.length === 0) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="11"><i class="fa fa-inbox"></i>無符合條件的薪資資料</td></tr>';
+    document.getElementById('payroll-foot').classList.add('hid');
+    document.getElementById('tbl-count').textContent = '';
+    return;
+  }
+
+  let html = '';
+  for (const r of data) {
+    const capClass = r.capped ? ' capped' : '';
+    html += `<tr>
+      <td class="emp-name">${esc(r.name)}</td>
+      <td class="dept-name">${esc(r.dept)}</td>
+      <td class="num">${famt(r.rate)}</td>
+      <td class="num">${fhrs(r.normalH)}</td>
+      <td class="num${capClass}">${fhrs(r.weekdayOT)}${r.capped ? ' <span class="badge b-cap" title="已觸及46h上限">上限</span>' : ''}</td>
+      <td class="num${capClass}">${fhrs(r.restdayOT)}</td>
+      <td class="num amt">${famt(r.otPay)}</td>
+      <td class="num">${fhrs(r.leaveDays)}</td>
+      <td class="num" style="color:var(--err)">${r.leaveDeduct > 0 ? '-' + famt(r.leaveDeduct) : '$0'}</td>
+      <td class="num" style="color:var(--ok)">${r.compOffset > 0 ? '+' + famt(r.compOffset) : '$0'}</td>
+      <td class="num amt" style="font-size:.88rem">${famt(r.totalPay)}</td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+
+  // Foot totals
+  const ft = { normalH:0, weekdayOT:0, restdayOT:0, otPay:0, leaveDays:0, leaveDeduct:0, compOffset:0, totalPay:0 };
+  for (const r of data) {
+    ft.normalH += r.normalH;
+    ft.weekdayOT += r.weekdayOT;
+    ft.restdayOT += r.restdayOT;
+    ft.otPay += r.otPay;
+    ft.leaveDays += r.leaveDays;
+    ft.leaveDeduct += r.leaveDeduct;
+    ft.compOffset += r.compOffset;
+    ft.totalPay += r.totalPay;
+  }
+  document.getElementById('ft-normalH').textContent = fhrs(ft.normalH);
+  document.getElementById('ft-weekdayOT').textContent = fhrs(ft.weekdayOT);
+  document.getElementById('ft-restdayOT').textContent = fhrs(ft.restdayOT);
+  document.getElementById('ft-otPay').textContent = famt(ft.otPay);
+  document.getElementById('ft-leaveDays').textContent = fhrs(ft.leaveDays);
+  document.getElementById('ft-leaveDeduct').textContent = ft.leaveDeduct > 0 ? '-' + famt(ft.leaveDeduct) : '$0';
+  document.getElementById('ft-compOffset').textContent = ft.compOffset > 0 ? '+' + famt(ft.compOffset) : '$0';
+  document.getElementById('ft-totalPay').textContent = famt(ft.totalPay);
+  document.getElementById('payroll-foot').classList.remove('hid');
+  document.getElementById('tbl-count').textContent = '共 ' + data.length + ' 位員工';
+}
+
+/* ===== UI ACTIONS ===== */
+
+function chgMonth(delta) {
+  const [y, m] = STATE.month.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  STATE.month = d.toISOString().slice(0, 7);
+  updateMonthLabel();
+  loadAll();
+}
+
+function updateMonthLabel() {
+  document.getElementById('month-lbl').textContent = STATE.month;
+}
+
+function applyFilter() {
+  STATE.filter.dept = document.getElementById('dept-filter').value;
+  render();
+}
+
+function doSort(field) {
+  if (STATE.sort.field === field) {
+    STATE.sort.dir = STATE.sort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    STATE.sort.field = field;
+    STATE.sort.dir = 'asc';
+  }
+  render();
+}
+
+/* ===== CSV EXPORT ===== */
+function doExportCSV() {
+  let data = STATE.payroll;
+  if (STATE.filter.dept) {
+    const dId = parseInt(STATE.filter.dept);
+    data = data.filter(r => r.deptId === dId);
+  }
+  if (data.length === 0) {
+    toast('無資料可匯出', 'er');
+    return;
+  }
+
+  const headers = ['員工','部門','時薪','正常工時','平日加班(h)','休息日加班(h)','加班費','請假天數','請假扣款','調休抵銷','應發薪資'];
+  const rows = [headers.join(',')];
+
+  for (const r of data) {
+    rows.push([
+      csvVal(r.name),
+      csvVal(r.dept),
+      Math.round(r.rate),
+      fhrs(r.normalH),
+      fhrs(r.weekdayOT),
+      fhrs(r.restdayOT),
+      Math.round(r.otPay),
+      fhrs(r.leaveDays),
+      Math.round(r.leaveDeduct),
+      Math.round(r.compOffset),
+      Math.round(r.totalPay)
+    ].join(','));
+  }
+
+  // Total row
+  const ft = { normalH:0, weekdayOT:0, restdayOT:0, otPay:0, leaveDays:0, leaveDeduct:0, compOffset:0, totalPay:0 };
+  for (const r of data) {
+    ft.normalH += r.normalH;
+    ft.weekdayOT += r.weekdayOT;
+    ft.restdayOT += r.restdayOT;
+    ft.otPay += r.otPay;
+    ft.leaveDays += r.leaveDays;
+    ft.leaveDeduct += r.leaveDeduct;
+    ft.compOffset += r.compOffset;
+    ft.totalPay += r.totalPay;
+  }
+  rows.push([
+    '合計','','',
+    fhrs(ft.normalH),
+    fhrs(ft.weekdayOT),
+    fhrs(ft.restdayOT),
+    Math.round(ft.otPay),
+    fhrs(ft.leaveDays),
+    Math.round(ft.leaveDeduct),
+    Math.round(ft.compOffset),
+    Math.round(ft.totalPay)
+  ].join(','));
+
+  const csv = '\uFEFF' + rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '薪資彙整_' + STATE.month + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV 匯出成功', 'ok');
+}
+
+function csvVal(s) {
+  if (!s) return '';
+  s = String(s);
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+/* ===== PRINT ===== */
+function doPrint() {
+  window.print();
+}
+
+/* ===== CLOCK ===== */
+function tickClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  document.getElementById('clock').textContent = hh + ':' + mm + ':' + ss;
+  const y = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const wdays = ['日','一','二','三','四','五','六'];
+  document.getElementById('clock-date').textContent = y + '/' + mo + '/' + d + ' 週' + wdays[now.getDay()];
+}
+
+/* ===== TOAST ===== */
+function toast(msg, type) {
+  type = type || 'in';
+  const cls = { ok:'t-ok', er:'t-er', in:'t-in' }[type] || 't-in';
+  const icon = { ok:'fa-check-circle', er:'fa-exclamation-circle', in:'fa-info-circle' }[type] || 'fa-info-circle';
+  const el = document.createElement('div');
+  el.className = 'toast ' + cls;
+  el.innerHTML = '<i class="fa ' + icon + '"></i> ' + esc(msg);
+  document.getElementById('tw').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+/* ===== UTILS ===== */
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/* ===== BOOT ===== */
+tickClock();
+setInterval(tickClock, 1000);
+init();
+</script>
+</body>
+</html>

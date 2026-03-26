@@ -469,6 +469,12 @@
         <field name="target">self</field>
     </record>
 
+    <record id="hr_payroll_summary_url_action" model="ir.actions.act_url">
+        <field name="name">薪資彙總</field>
+        <field name="url">/hr_attendance/static/payroll_summary.html</field>
+        <field name="target">self</field>
+    </record>
+
     <!-- Menus -->
 
     <menuitem id="menu_hr_attendance_root" name="Attendances" sequence="205" groups="hr_attendance.group_hr_attendance_officer" web_icon="hr_attendance,static/description/icon.png"/>
@@ -496,6 +502,8 @@
     <menuitem id="menu_hr_attendance_employee" name="Employees" parent="menu_hr_attendance_overview" action="hr.open_view_employee_list_my" groups="hr_attendance.group_hr_attendance_officer" sequence="2"/>
 
     <menuitem id="menu_hr_attendance_view_attendances_management" name="考勤管理" parent="menu_hr_attendance_root" sequence="6" groups="hr_attendance.group_hr_attendance_officer" action="hr_attendance_mgmt_url_action"/>
+
+    <menuitem id="menu_hr_payroll_summary" name="薪資彙總" parent="menu_hr_attendance_root" sequence="7" groups="hr_attendance.group_hr_attendance_officer" action="hr_payroll_summary_url_action"/>
 
     <menuitem id="menu_hr_attendance_configuration" name="Configuration" parent="menu_hr_attendance_root" sequence="99" groups="hr_attendance.group_hr_attendance_manager"/>
 
