@@ -23,8 +23,8 @@ ALLOWED_IPS = [
 
 # GPS 地理圍欄（公司座標 + 允許半徑公尺）
 GEO_FENCE = {
-    'lat': 25.0330,      # 公司緯度（依實際修改）
-    'lng': 121.5654,     # 公司經度（依實際修改）
+    'lat': 24.1820,      # 台中市北屯區（依實際修改）
+    'lng': 120.6860,     # 台中市北屯區（依實際修改）
     'radius_m': 200,     # 允許半徑（公尺）
 }
 
@@ -52,6 +52,12 @@ def _check_ip():
     return any(ip.startswith(allowed) for allowed in ALLOWED_IPS)
 
 
+def _is_mobile():
+    """偵測是否為手機裝置"""
+    ua = (request.httprequest.user_agent.string or '').lower()
+    return any(k in ua for k in ('iphone', 'android', 'mobile', 'ipod'))
+
+
 def _check_gps(latitude, longitude):
     """檢查 GPS 座標是否在圍欄內"""
     if not CHECK_GPS:
@@ -69,7 +75,8 @@ def _validate_checkin_location(latitude=False, longitude=False):
         ip = request.httprequest.environ.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() \
             or request.httprequest.remote_addr
         errors.append(_("不允許從此網路打卡（IP: %s）", ip))
-    if CHECK_GPS and not _check_gps(latitude, longitude):
+    # GPS 只檢查手機裝置
+    if CHECK_GPS and _is_mobile() and not _check_gps(latitude, longitude):
         errors.append(_("不在允許的打卡範圍內，請確認您在公司附近"))
     if errors:
         raise UserError('\n'.join(errors))
