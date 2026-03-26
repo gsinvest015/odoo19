@@ -9,7 +9,71 @@ from odoo.tools import float_round, py_to_js_locale, SQL
 from odoo.tools.image import image_data_uri
 
 import datetime
+import math
 from requests.exceptions import RequestException
+
+# ── 打卡地點限制設定 ──
+# IP 白名單（支援完整 IP 或前綴比對）
+ALLOWED_IPS = [
+    '127.0.0.1',        # localhost
+    '::1',              # localhost IPv6
+    '192.168.1.',       # 公司內網網段（依實際修改）
+    '192.168.0.',       # 備用網段
+]
+
+# GPS 地理圍欄（公司座標 + 允許半徑公尺）
+GEO_FENCE = {
+    'lat': 25.0330,      # 公司緯度（依實際修改）
+    'lng': 121.5654,     # 公司經度（依實際修改）
+    'radius_m': 200,     # 允許半徑（公尺）
+}
+
+# 是否啟用各項檢查（可個別關閉）
+CHECK_IP = True
+CHECK_GPS = True
+
+
+def _haversine(lat1, lng1, lat2, lng2):
+    """計算兩點間距離（公尺）"""
+    R = 6371000
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlam = math.radians(lng2 - lng1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def _check_ip():
+    """檢查請求 IP 是否在白名單內"""
+    if not CHECK_IP:
+        return True
+    ip = request.httprequest.environ.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() \
+        or request.httprequest.remote_addr or ''
+    return any(ip.startswith(allowed) for allowed in ALLOWED_IPS)
+
+
+def _check_gps(latitude, longitude):
+    """檢查 GPS 座標是否在圍欄內"""
+    if not CHECK_GPS:
+        return True
+    if not latitude or not longitude:
+        return False
+    dist = _haversine(float(latitude), float(longitude), GEO_FENCE['lat'], GEO_FENCE['lng'])
+    return dist <= GEO_FENCE['radius_m']
+
+
+def _validate_checkin_location(latitude=False, longitude=False):
+    """統一驗證打卡位置，失敗時拋出 UserError"""
+    errors = []
+    if CHECK_IP and not _check_ip():
+        ip = request.httprequest.environ.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() \
+            or request.httprequest.remote_addr
+        errors.append(_("不允許從此網路打卡（IP: %s）", ip))
+    if CHECK_GPS and not _check_gps(latitude, longitude):
+        errors.append(_("不在允許的打卡範圍內，請確認您在公司附近"))
+    if errors:
+        raise UserError('\n'.join(errors))
+
 
 class HrAttendance(http.Controller):
     @staticmethod
@@ -181,6 +245,7 @@ class HrAttendance(http.Controller):
 
     @http.route('/hr_attendance/attendance_barcode_scanned', type="jsonrpc", auth="public")
     def scan_barcode(self, token, barcode):
+        _validate_checkin_location()
         company = self._get_company(token)
         if company:
             employee = request.env['hr.employee'].sudo().search([('barcode', '=', barcode), ('company_id', '=', company.id)], limit=1)
@@ -191,6 +256,7 @@ class HrAttendance(http.Controller):
 
     @http.route('/hr_attendance/manual_selection', type="jsonrpc", auth="public")
     def manual_selection(self, token, employee_id, pin_code, latitude=False, longitude=False):
+        _validate_checkin_location(latitude, longitude)
         company = self._get_company(token)
         if company:
             employee = request.env['hr.employee'].sudo().browse(employee_id)
@@ -227,6 +293,7 @@ class HrAttendance(http.Controller):
 
     @http.route('/hr_attendance/systray_check_in_out', type="jsonrpc", auth="user")
     def systray_attendance(self, latitude=False, longitude=False):
+        _validate_checkin_location(latitude, longitude)
         employee = request.env.user.employee_id
         geo_ip_response = self._get_geoip_response(mode='systray',
                                                   latitude=latitude,
