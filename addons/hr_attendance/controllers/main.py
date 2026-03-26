@@ -17,8 +17,8 @@ from requests.exceptions import RequestException
 ALLOWED_IPS = [
     '127.0.0.1',        # localhost
     '::1',              # localhost IPv6
-    '192.168.1.',       # 公司內網網段（依實際修改）
-    '192.168.0.',       # 備用網段
+    '193.186.4.172',    # 辦公室 A
+    '114.46.163.137',   # 辦公室 B
 ]
 
 # GPS 地理圍欄（公司座標 + 允許半徑公尺）
